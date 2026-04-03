@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "motor_ctrl.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,7 +52,7 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+sMotor Motor1; // 모터 제어 구조체 전역 변수
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -113,7 +113,31 @@ int main(void)
   MX_CORDIC_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+  Motor1.PWMDrv.htim = &htim1; // TIM1을 PWM 드라이버에 연결
+  Motor1.PWMDrv.ChannelA = TIM_CHANNEL_1;
+  Motor1.PWMDrv.ChannelB = TIM_CHANNEL_2;
+  Motor1.PWMDrv.ChannelC = TIM_CHANNEL_3;
 
+  Motor1.ADCDrv.hadc = &hadc2; // ADC2를 ADC 드라이버에 연결
+
+  Motor1.HallDrv.HallAPin = HallA_Pin;
+  Motor1.HallDrv.HallAPort = HallA_GPIO_Port;
+  Motor1.HallDrv.HallBPin = HallB_Pin;
+  Motor1.HallDrv.HallBPort = HallB_GPIO_Port;
+  Motor1.HallDrv.HallCPin = HallC_Pin;
+  Motor1.HallDrv.HallCPort = HallC_GPIO_Port;
+
+  MOTOR_Init(&Motor1); // 모터 제어 시스템 초기화
+
+  ADC_CalibrateOffsets(&Motor1.ADCDrv); // ADC 오프셋 보정 수행:w
+
+  HAL_TIM_PWM_Start(Motor1.PWMDrv.htim, Motor1.PWMDrv.ChannelA); // TIM1 채널 1에서 PWM 신호 출력 시작
+  HAL_TIM_PWM_Start(Motor1.PWMDrv.htim, Motor1.PWMDrv.ChannelB); // TIM1 채널 2에서 PWM 신호 출력 시작
+  HAL_TIM_PWM_Start(Motor1.PWMDrv.htim, Motor1.PWMDrv.ChannelC); // TIM1 채널 3에서 PWM 신호 출력 시작
+
+  HAL_ADC_Start_DMA(Motor1.ADCDrv.hadc, (uint32_t *) Motor1.ADCDrv.pRawData, 4); // ADC2에서 DMA를 사용하여 4개의 변환 결과를 Motor1.ADCDrv.pRawData 배열로 저장 시작
+
+  MOTOR_Start(&Motor1); // 모터 구동 시작
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -628,7 +652,13 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+    // 우리가 할당한 전류 센싱용 ADC가 맞는지 확인
+    if(hadc->Instance == Motor1.ADCDrv.hadc->Instance) {
+        // FOC 알고리즘 1회전 실행!
+        MOTOR_Update_ISR(&Motor1);
+    }
+}
 /* USER CODE END 4 */
 
 /**
