@@ -33,9 +33,10 @@ typedef struct {
     uint16_t OffsetIA; // 전류 센서 오프셋 (ADC 단위)
     uint16_t OffsetIB; // 전류 센서 오프셋 (ADC 단위)
     uint16_t OffsetIC; // 전류 센서 오프셋 (ADC 단위)
+    uint16_t OffsetVDC; // 전압 센서 오프셋 (ADC 단위)
 
-    float ScaleI; // 전류 센서 스케일링 팩터 (ADC 단위 * 스케일링 = 실제값(A)
-    float ScaleV; // 전압 센서 스케일링 팩터 (ADC 단위 * 스케일링 = 실제값(V)
+    float ScaleI; // 전류 센서 스케일링 팩터 (ADC 단위 * 스케일링 = 실제값(A))
+    float ScaleV; // 전압 센서 스케일링 팩터 (ADC 단위 * 스케일링 = 실제값(V))
 } sADCHandle;
 
 typedef struct {

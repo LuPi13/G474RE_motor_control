@@ -9,7 +9,7 @@
 #include "pwm_driver.h"
 
 void PWM_Init(sPWMHandle *pHandle) {
-
+    HAL_TIM_Base_Start_IT(pHandle->htim);
 }
 
 void PWM_SetDuty(sPWMHandle *pHandle, sPWMDuty *pDuty) {
@@ -27,10 +27,16 @@ void PWM_Start(sPWMHandle *pHandle) {
     HAL_TIM_PWM_Start(pHandle->htim, pHandle->ChannelA);
     HAL_TIM_PWM_Start(pHandle->htim, pHandle->ChannelB);
     HAL_TIM_PWM_Start(pHandle->htim, pHandle->ChannelC);
+    HAL_TIMEx_PWMN_Start(pHandle->htim, pHandle->ChannelA);
+    HAL_TIMEx_PWMN_Start(pHandle->htim, pHandle->ChannelB);
+    HAL_TIMEx_PWMN_Start(pHandle->htim, pHandle->ChannelC);
 }
 
 void PWM_Stop(sPWMHandle *pHandle) {
     HAL_TIM_PWM_Stop(pHandle->htim, pHandle->ChannelA);
     HAL_TIM_PWM_Stop(pHandle->htim, pHandle->ChannelB);
     HAL_TIM_PWM_Stop(pHandle->htim, pHandle->ChannelC);
+    HAL_TIMEx_PWMN_Stop(pHandle->htim, pHandle->ChannelA);
+    HAL_TIMEx_PWMN_Stop(pHandle->htim, pHandle->ChannelB);
+    HAL_TIMEx_PWMN_Stop(pHandle->htim, pHandle->ChannelC);
 }

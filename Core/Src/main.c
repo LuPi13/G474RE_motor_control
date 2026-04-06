@@ -47,7 +47,7 @@ FDCAN_HandleTypeDef hfdcan2;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
-TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim6;
 
 UART_HandleTypeDef huart2;
 
@@ -65,7 +65,7 @@ static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_CORDIC_Init(void);
-static void MX_TIM3_Init(void);
+static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -111,7 +111,7 @@ int main(void)
   MX_TIM2_Init();
   MX_USART2_UART_Init();
   MX_CORDIC_Init();
-  MX_TIM3_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   Motor1.PWMDrv.htim = &htim1; // TIM1을 PWM 드라이버에 연결
   Motor1.PWMDrv.ChannelA = TIM_CHANNEL_1;
@@ -127,15 +127,19 @@ int main(void)
   Motor1.HallDrv.HallCPin = HallC_Pin;
   Motor1.HallDrv.HallCPort = HallC_GPIO_Port;
 
+  Motor1.IPIPrescaler = 10; // 전류 PI 제어 계산 주기 프리스케일러 설정 (예: 10이면 10번에 1번 계산)
+
+  Motor1.ADCDrv.ScaleI = 0.01221001221001f;
+  Motor1.ADCDrv.ScaleV = 0.03223443223443f;
+
   MOTOR_Init(&Motor1); // 모터 제어 시스템 초기화
 
-  ADC_CalibrateOffsets(&Motor1.ADCDrv); // ADC 오프셋 보정 수행:w
+  // 2. PI 제어기 초기화
+  PI_Init(&Motor1.PIId, 0.1f, 0.0f, 0.00005f, -0.5f, 0.5f); // d축 전류 제어기 (Kp, Ki, Min, Max)
+  PI_Init(&Motor1.PIIq, 0.1f, 0.0f, 0.00005f, -0.5f, 0.5f); // q축 전류 제어기 (Kp, Ki, Min, Max)
+  PI_Init(&Motor1.PISpeed, 1.0f, 0.01f, 0.001f, -300.0f, 300.0f); // 속도 제어기 (Kp, Ki, Min, Max)
 
-  HAL_TIM_PWM_Start(Motor1.PWMDrv.htim, Motor1.PWMDrv.ChannelA); // TIM1 채널 1에서 PWM 신호 출력 시작
-  HAL_TIM_PWM_Start(Motor1.PWMDrv.htim, Motor1.PWMDrv.ChannelB); // TIM1 채널 2에서 PWM 신호 출력 시작
-  HAL_TIM_PWM_Start(Motor1.PWMDrv.htim, Motor1.PWMDrv.ChannelC); // TIM1 채널 3에서 PWM 신호 출력 시작
 
-  HAL_ADC_Start_DMA(Motor1.ADCDrv.hadc, (uint32_t *) Motor1.ADCDrv.pRawData, 4); // ADC2에서 DMA를 사용하여 4개의 변환 결과를 Motor1.ADCDrv.pRawData 배열로 저장 시작
 
   MOTOR_Start(&Motor1); // 모터 구동 시작
   /* USER CODE END 2 */
@@ -383,7 +387,7 @@ static void MX_TIM1_Init(void)
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 0;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED3;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED2;
   htim1.Init.Period = 4249;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
@@ -508,46 +512,40 @@ static void MX_TIM2_Init(void)
 }
 
 /**
-  * @brief TIM3 Initialization Function
+  * @brief TIM6 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM3_Init(void)
+static void MX_TIM6_Init(void)
 {
 
-  /* USER CODE BEGIN TIM3_Init 0 */
+  /* USER CODE BEGIN TIM6_Init 0 */
 
-  /* USER CODE END TIM3_Init 0 */
+  /* USER CODE END TIM6_Init 0 */
 
-  TIM_HallSensor_InitTypeDef sConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-  /* USER CODE BEGIN TIM3_Init 1 */
+  /* USER CODE BEGIN TIM6_Init 1 */
 
-  /* USER CODE END TIM3_Init 1 */
-  htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
-  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 65535;
-  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
-  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
-  sConfig.IC1Filter = 0;
-  sConfig.Commutation_Delay = 0;
-  if (HAL_TIMEx_HallSensor_Init(&htim3, &sConfig) != HAL_OK)
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 16;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 19999;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
     Error_Handler();
   }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC2REF;
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM3_Init 2 */
+  /* USER CODE BEGIN TIM6_Init 2 */
 
-  /* USER CODE END TIM3_Init 2 */
+  /* USER CODE END TIM6_Init 2 */
 
 }
 

@@ -40,11 +40,18 @@ typedef struct {
     sPIController PIIq;   // q축 전류 제어기
     sPIController PISpeed;  // 속도 제어기
 
+    uint8_t IPIPrescaler; // 전류 PI 제어기의 계산 주기를 조절하기 위한 프리스케일러 (예: 1이면 매 Update마다 계산, 10이면 10번에 1번 계산)
+    uint8_t IPICounter; // 전류 Prescaling을 위한 counter(내부변수)
+
     sPhaseCurrents Iabc;
     sAlphaBeta  Iab;
     sDQ Idq;
     float Vdc;
     sPWMDuty DutyABC;
+
+    float Ld; // d축 인덕턴스 (H)
+    float Lq; // q축 인덕턴스 (H)
+    float Rs; // 상 저항 (Ω)
 
     float ElectricalTheta; // 전기적 각도 (rad)
     float ElectricalOmega; // 전기적 각속도 (rad/s)

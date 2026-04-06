@@ -13,9 +13,12 @@ sADCRawData adcRawDataBuffer; // ADC DMA로 채워질 원시 데이터 버퍼
 void ADC_Init(sADCHandle *pHandle) {
     pHandle->pRawData = &adcRawDataBuffer;
 
+    HAL_ADCEx_Calibration_Start(pHandle->hadc, ADC_SINGLE_ENDED);
+    HAL_ADCEx_Calibration_Start(pHandle->hadc, ADC_DIFFERENTIAL_ENDED);
+    HAL_ADC_Start_DMA(pHandle->hadc, (uint32_t*)pHandle->pRawData, 4);
+
     ADC_CalibrateOffsets(pHandle);
 
-    HAL_ADC_Start_DMA(pHandle->hadc, (uint32_t*)pHandle->pRawData, 4);
 }
 
 void ADC_CalibrateOffsets(sADCHandle *pHandle) {
@@ -54,7 +57,7 @@ void ADC_GetPhaseCurrents(sADCHandle *pHandle, sPhaseCurrents *pCurrentsOut) {
 }
 
 float ADC_GetVDC(sADCHandle *pHandle) {
-    int32_t correctedVDC = (int32_t)pHandle->pRawData->RawVDC; // 차동 입력이므로 오프셋 보정은 필요 없음
+    int32_t correctedVDC = (int32_t)pHandle->pRawData->RawVDC;
 
     return correctedVDC * pHandle->ScaleV;
 
