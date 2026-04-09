@@ -117,9 +117,9 @@ int main(void)
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
   Motor1.PWMDrv.htim = &htim1; // TIM1을 PWM 드라이버에 연결
-  Motor1.PWMDrv.ChannelA = TIM_CHANNEL_1;
+  Motor1.PWMDrv.ChannelA = TIM_CHANNEL_3;
   Motor1.PWMDrv.ChannelB = TIM_CHANNEL_2;
-  Motor1.PWMDrv.ChannelC = TIM_CHANNEL_3;
+  Motor1.PWMDrv.ChannelC = TIM_CHANNEL_1;
 
   Motor1.ADCDrv.hadc = &hadc2; // ADC2를 ADC 드라이버에 연결
   Motor1.ADCDrv.OffsetIA = 2048; // 전류 센서 A 오프셋
@@ -580,7 +580,7 @@ static void MX_TIM7_Init(void)
   htim7.Instance = TIM7;
   htim7.Init.Prescaler = 16;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 19999;
+  htim7.Init.Period = 4999;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
@@ -708,8 +708,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-    if (htim->Instance == TIM7) { // 2ms마다 실행되는 타이머
-        // 2ms마다 실행되는 타이머 인터럽트에서 홀센서 측정
+    if (htim->Instance == TIM7) { // 0.5ms마다 실행되는 타이머
+        // 홀센서 측정
         HALL_Update(&Motor1.HallDrv);
     }
 }

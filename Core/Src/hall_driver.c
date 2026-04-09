@@ -23,25 +23,43 @@ static const float ANGLE_TABLE_STOP[8] = {
     PI / 2.0f, // 110
     0 // 111 (잘못된 상태, 기본값으로 0도)
 };
-static const float ANGLE_TABLE_POS[8] = {
-    0, // 000 (잘못된 상태, 기본값으로 0도)
-    -PI / 6.0f, // 001
-    PI / 2.0f, // 010
-    PI / 6.0f, // 011
-    -PI * 5.0f / 6.0f, // 100
-    -PI / 2.0f, // 101
-    PI * 5.0f / 6.0f, // 110
-    0 // 111 (잘못된 상태, 기본값으로 0도)
-};
 static const float ANGLE_TABLE_NEG[8] = {
-    0, // 000 (잘못된 상태, 기본값으로 0도)
-    PI / 6.0f, // 001
-    PI * 5.0f / 6.0f, // 010
-    PI / 2.0f, // 011
-    -PI / 2.0f, // 100
-    -PI / 6.0f, // 101
-    -PI * 5.0f / 6.0f, // 110
-    0 // 111 (잘못된 상태, 기본값으로 0도)
+    0.0f, // 000 (잘못된 상태, 기본값으로 0도)
+    -PI * 2.0f / 3.0f, // 001
+    0.0f, // 010
+    -PI / 3.0f, // 011
+    PI * 2.0f / 3.0f, // 100
+    -PI, // 101
+    PI / 3.0f, // 110
+    0.0f // 111 (잘못된 상태, 기본값으로 0도)
+};
+static const float ANGLE_TABLE_POS[8] = {
+    0.0f, // 000 (잘못된 상태, 기본값으로 0도)
+    -PI / 3.0f, // 001
+    PI / 3.0f, // 010
+    0.0f, // 011
+    -PI, // 100
+    -PI * 2.0f / 3.0f, // 101
+    PI * 2.0f / 3.0f, // 110
+    0.0f // 111 (잘못된 상태, 기본값으로 0도)
+};
+
+/**
+ * @brief 회전 방향 판단용 테이블 (이전 상태 -> 현재 상태)
+ * @note 실제 하드웨어의 홀센서 배치에 따라 달라질 수 있으므로, 실제 하드웨어에 맞게 조정 필요
+ *     - [prevState][currState] = 회전 방향
+ *     - 1: abc순, -1: cba순, 0: 방향 판단 불가
+ *     - 2: abc순으로 2칸 이동, -2: cba순으로 2칸 이동
+ */
+static const int8_t ROTATING_TABLE[8][8] = {
+    {0, 0, 0, 0, 0, 0, 0, 0}, // 이전 상태 000
+    {0, 0, 2, 1, -2, -1, 0, 0}, // 이전 상태 001
+    {0, -2, 0, -1, 2, 0, 1, 0}, // 이전 상태 010
+    {0, -1, 1, 0, 0, -2, 2, 0}, // 이전 상태 011
+    {0, 2, -2, 0, 0, 1, -1, 0}, // 이전 상태 100
+    {0, 1, 0, 2, -1, 0, -2, 0}, // 이전 상태 101
+    {0, 0, -1, -2, 1, 2, 0, 0}, // 이전 상태 110
+    {0, 0, 0, 0, 0, 0, 0, 0} // 이전 상태 111
 };
 
 /**
@@ -66,23 +84,7 @@ static uint8_t HALL_ReadRaw(sHallHandle *pHandle) {
  * @note 마찬가지로 홀센서 배치에 따라 달라질 수 있으므로, 실제 하드웨어에 맞게 조정 필요
  */
 static int8_t HALL_GetDirection(uint8_t prevState, uint8_t currState) {
-    if ((prevState == 2 && currState == 3) ||
-        (prevState == 3 && currState == 1) ||
-        (prevState == 1 && currState == 5) ||
-        (prevState == 5 && currState == 4) ||
-        (prevState == 4 && currState == 6) ||
-        (prevState == 6 && currState == 2)) {
-        return -1; // cba순
-    } else if ((prevState == 3 && currState == 2) ||
-               (prevState == 1 && currState == 3) ||
-               (prevState == 5 && currState == 1) ||
-               (prevState == 4 && currState == 5) ||
-               (prevState == 6 && currState == 4) ||
-               (prevState == 2 && currState == 6)) {
-        return 1; // abc순
-    } else {
-        return 0; // 방향 판단 불가
-    }
+    return ROTATING_TABLE[prevState][currState];
 }
 
 
@@ -92,18 +94,20 @@ static float HALL_GetSectorBaseAngle(uint8_t state, int8_t direction) {
         return 0.0f; // 잘못된 상태, 기본값으로 0도 반환
     }
 
-//    switch (direction) {
-//        case 1: // abc순
-//            return ANGLE_TABLE_POS[state];
-//        case -1: // cba순
-//            return ANGLE_TABLE_NEG[state];
-//            break;
-//        default: // 방향 판단 불가
-//            return ANGLE_TABLE_STOP[state];
-//            break;
-//    }
-//    return 0.0f; // 안전장치, 실제로는 도달하지 않아야 함
-    return ANGLE_TABLE_STOP[state];
+    switch (direction) {
+        case 1: // abc순
+        case 2:
+            return ANGLE_TABLE_POS[state];
+        case -1: // cba순
+        case -2:
+            return ANGLE_TABLE_NEG[state];
+            break;
+        default: // 방향 판단 불가
+            return ANGLE_TABLE_STOP[state];
+            break;
+    }
+    return 0.0f; // 안전장치, 실제로는 도달하지 않아야 함
+//    return ANGLE_TABLE_STOP[state];
 }
 
 void HALL_Init(sHallHandle *pHandle) {
