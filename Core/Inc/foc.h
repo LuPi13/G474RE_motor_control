@@ -9,6 +9,7 @@
 #ifndef INC_FOC_H_
 #define INC_FOC_H_
 
+#define SQRT3 1.7320508075688772f
 #define ONE_OVER_SQRT3 0.5773502691896258f // 1/sqrt(3)
 
 #include "q31.h"

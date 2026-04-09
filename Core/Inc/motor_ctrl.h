@@ -18,6 +18,7 @@
 
 typedef enum {
     MOTOR_STATE_IDLE = 0,   // 정지 및 대기 (PWM OFF)
+    MOTOR_STATE_DEBUG,
     MOTOR_STATE_ALIGN,      // 초기 위치 정렬 (센서리스 기동 시)
     MOTOR_STATE_STARTUP,    // 홀센서 기반 기동 (Hybrid Startup)
     MOTOR_STATE_RUN_FOC,    // 정상 FOC 구동 (EEMF 센서리스 또는 홀센서)

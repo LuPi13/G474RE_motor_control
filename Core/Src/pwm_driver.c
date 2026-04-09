@@ -9,7 +9,7 @@
 #include "pwm_driver.h"
 
 void PWM_Init(sPWMHandle *pHandle) {
-    HAL_TIM_Base_Start_IT(pHandle->htim);
+    (void)pHandle;
 }
 
 void PWM_SetDuty(sPWMHandle *pHandle, sPWMDuty *pDuty) {

@@ -33,8 +33,9 @@ void CORDIC_SinCos(q31_t angle, q31_t* sin, q31_t* cos) {
     }
 
     LL_CORDIC_WriteData(CORDIC, angle.raw);
-    *cos = (q31_t){.raw = LL_CORDIC_ReadData(CORDIC)};
+
     *sin = (q31_t){.raw = LL_CORDIC_ReadData(CORDIC)};
+    *cos = (q31_t){.raw = LL_CORDIC_ReadData(CORDIC)};
 }
 
 void CORDIC_CartesianToPolar(q31_t x, q31_t y, q31_t* r, q31_t* theta) {

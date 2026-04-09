@@ -9,7 +9,7 @@
 #include "pi_ctrl.h"
 #include <math.h>
 
-void PI_Init(sPIController *pPI, float kp, float ki, float dt, float outMax, float outMin) {
+void PI_Init(sPIController *pPI, float kp, float ki, float dt, float outMin, float outMax) {
     pPI->Kp = kp;
     pPI->KiDt = ki * dt; // Ki * dt 계산
 

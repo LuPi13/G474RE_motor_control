@@ -15,8 +15,8 @@ void FOC_ClarkeTransform(sABC *pabc, sAlphaBeta *pAlphaBeta) {
 
 void FOC_InverseClarkeTransform(sAlphaBeta *pAlphaBeta, sABC *pabc) {
     pabc->a = pAlphaBeta->alpha; // a = alpha
-    pabc->b = -0.5f * (pAlphaBeta->alpha - ONE_OVER_SQRT3 * pAlphaBeta->beta); // b = -0.5 * (alpha + (1/sqrt(3)) * beta)
-    pabc->c = -0.5f * (pAlphaBeta->alpha + ONE_OVER_SQRT3 * pAlphaBeta->beta); // c = -0.5 * (alpha - (1/sqrt(3)) * beta)
+    pabc->b = -0.5f * (pAlphaBeta->alpha - SQRT3 * pAlphaBeta->beta); // b = -0.5 * (alpha - sqrt(3) * beta)
+    pabc->c = -0.5f * (pAlphaBeta->alpha + SQRT3 * pAlphaBeta->beta); // c = -0.5 * (alpha + sqrt(3) * beta)
 }
 
 void FOC_ParkTransform(sAlphaBeta *alphaBeta, q31_t theta_e, sDQ *dq) {

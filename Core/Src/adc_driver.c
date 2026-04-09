@@ -17,17 +17,17 @@ void ADC_Init(sADCHandle *pHandle) {
     HAL_ADCEx_Calibration_Start(pHandle->hadc, ADC_DIFFERENTIAL_ENDED);
     HAL_ADC_Start_DMA(pHandle->hadc, (uint32_t*)pHandle->pRawData, 4);
 
-    ADC_CalibrateOffsets(pHandle);
+//    ADC_CalibrateOffsets(pHandle);
 
 }
 
 void ADC_CalibrateOffsets(sADCHandle *pHandle) {
     uint32_t sumA = 0, sumB = 0, sumC = 0;
 
-    for (int i = 0; i < CURRENT_SENSOR_OFFSET_SAMPLES; i++) {
-        // ADC 변환이 완료될 때까지 대기
-        while (HAL_ADC_PollForConversion(pHandle->hadc, HAL_MAX_DELAY) != HAL_OK);
+    // 잠시 대기
+    HAL_Delay(10);
 
+    for (int i = 0; i < CURRENT_SENSOR_OFFSET_SAMPLES; i++) {
         // DMA로 채워진 원시 데이터 읽기
         sumA += pHandle->pRawData->RawIA;
         sumB += pHandle->pRawData->RawIB;
@@ -57,7 +57,7 @@ void ADC_GetPhaseCurrents(sADCHandle *pHandle, sPhaseCurrents *pCurrentsOut) {
 }
 
 float ADC_GetVDC(sADCHandle *pHandle) {
-    int32_t correctedVDC = (int32_t)pHandle->pRawData->RawVDC;
+    int32_t correctedVDC = (int32_t)pHandle->pRawData->RawVDC - (int32_t)pHandle->OffsetVDC;
 
     return correctedVDC * pHandle->ScaleV;
 

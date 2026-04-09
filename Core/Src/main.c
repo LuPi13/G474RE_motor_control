@@ -47,7 +47,8 @@ FDCAN_HandleTypeDef hfdcan2;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
-TIM_HandleTypeDef htim6;
+TIM_HandleTypeDef htim5;
+TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart2;
 
@@ -65,7 +66,8 @@ static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_CORDIC_Init(void);
-static void MX_TIM6_Init(void);
+static void MX_TIM7_Init(void);
+static void MX_TIM5_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -111,7 +113,8 @@ int main(void)
   MX_TIM2_Init();
   MX_USART2_UART_Init();
   MX_CORDIC_Init();
-  MX_TIM6_Init();
+  MX_TIM7_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
   Motor1.PWMDrv.htim = &htim1; // TIM1을 PWM 드라이버에 연결
   Motor1.PWMDrv.ChannelA = TIM_CHANNEL_1;
@@ -119,7 +122,14 @@ int main(void)
   Motor1.PWMDrv.ChannelC = TIM_CHANNEL_3;
 
   Motor1.ADCDrv.hadc = &hadc2; // ADC2를 ADC 드라이버에 연결
+  Motor1.ADCDrv.OffsetIA = 2048; // 전류 센서 A 오프셋
+  Motor1.ADCDrv.OffsetIB = 2048; // 전류 센서 B 오프셋
+  Motor1.ADCDrv.OffsetIC = 2048; // 전류 센서 C 오프셋
+  Motor1.ADCDrv.OffsetVDC = 2048; // 전압 센서 오프셋
+  Motor1.ADCDrv.ScaleI = 0.01221001221001f;
+  Motor1.ADCDrv.ScaleV = 0.06446886446886f;
 
+  Motor1.HallDrv.htim = &htim5; // HTIM5을 홀 센서 타이머에 연결
   Motor1.HallDrv.HallAPin = HallA_Pin;
   Motor1.HallDrv.HallAPort = HallA_GPIO_Port;
   Motor1.HallDrv.HallBPin = HallB_Pin;
@@ -129,19 +139,18 @@ int main(void)
 
   Motor1.IPIPrescaler = 10; // 전류 PI 제어 계산 주기 프리스케일러 설정 (예: 10이면 10번에 1번 계산)
 
-  Motor1.ADCDrv.ScaleI = 0.01221001221001f;
-  Motor1.ADCDrv.ScaleV = 0.03223443223443f;
 
   MOTOR_Init(&Motor1); // 모터 제어 시스템 초기화
 
   // 2. PI 제어기 초기화
-  PI_Init(&Motor1.PIId, 0.1f, 0.0f, 0.00005f, -0.5f, 0.5f); // d축 전류 제어기 (Kp, Ki, Min, Max)
-  PI_Init(&Motor1.PIIq, 0.1f, 0.0f, 0.00005f, -0.5f, 0.5f); // q축 전류 제어기 (Kp, Ki, Min, Max)
+  PI_Init(&Motor1.PIId, 0.5f, 0.0f, 0.00005f, -2.0f, 2.0f); // d축 전류 제어기 (Kp, Ki, Min, Max)
+  PI_Init(&Motor1.PIIq, 0.5f, 10.0f, 0.00005f, -2.0f, 2.0f); // q축 전류 제어기 (Kp, Ki, Min, Max)
   PI_Init(&Motor1.PISpeed, 1.0f, 0.01f, 0.001f, -300.0f, 300.0f); // 속도 제어기 (Kp, Ki, Min, Max)
 
 
-
   MOTOR_Start(&Motor1); // 모터 구동 시작
+
+  HAL_TIM_Base_Start_IT(&htim7); // 테스트용 타이머
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -175,7 +184,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV4;
+  RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV6;
   RCC_OscInitStruct.PLL.PLLN = 85;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
@@ -396,10 +405,6 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_TIM_OC_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
   sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
@@ -422,15 +427,14 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_TIMING;
-  if (HAL_TIM_OC_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
   {
     Error_Handler();
   }
   sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
   sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
   sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 200;
+  sBreakDeadTimeConfig.DeadTime = 100;
   sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
   sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
   sBreakDeadTimeConfig.BreakFilter = 0;
@@ -476,7 +480,7 @@ static void MX_TIM2_Init(void)
   htim2.Init.Period = 20479;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  sConfig.EncoderMode = TIM_ENCODERMODE_TI1;
+  sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
   sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
   sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
   sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
@@ -512,40 +516,85 @@ static void MX_TIM2_Init(void)
 }
 
 /**
-  * @brief TIM6 Initialization Function
+  * @brief TIM5 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM6_Init(void)
+static void MX_TIM5_Init(void)
 {
 
-  /* USER CODE BEGIN TIM6_Init 0 */
+  /* USER CODE BEGIN TIM5_Init 0 */
 
-  /* USER CODE END TIM6_Init 0 */
+  /* USER CODE END TIM5_Init 0 */
 
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-  /* USER CODE BEGIN TIM6_Init 1 */
+  /* USER CODE BEGIN TIM5_Init 1 */
 
-  /* USER CODE END TIM6_Init 1 */
-  htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 16;
-  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 19999;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  /* USER CODE END TIM5_Init 1 */
+  htim5.Instance = TIM5;
+  htim5.Init.Prescaler = 169;
+  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim5.Init.Period = 4294967295;
+  htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim5, &sClockSourceConfig) != HAL_OK)
   {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM6_Init 2 */
+  /* USER CODE BEGIN TIM5_Init 2 */
 
-  /* USER CODE END TIM6_Init 2 */
+  /* USER CODE END TIM5_Init 2 */
+
+}
+
+/**
+  * @brief TIM7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM7_Init(void)
+{
+
+  /* USER CODE BEGIN TIM7_Init 0 */
+
+  /* USER CODE END TIM7_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM7_Init 1 */
+
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 16;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 19999;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM7_Init 2 */
+
+  /* USER CODE END TIM7_Init 2 */
 
 }
 
@@ -653,8 +702,15 @@ static void MX_GPIO_Init(void)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
     // 우리가 할당한 전류 센싱용 ADC가 맞는지 확인
     if(hadc->Instance == Motor1.ADCDrv.hadc->Instance) {
-        // FOC 알고리즘 1회전 실행!
+        // FOC 알고리즘 1회전 실행
         MOTOR_Update_ISR(&Motor1);
+    }
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+    if (htim->Instance == TIM7) { // 2ms마다 실행되는 타이머
+        // 2ms마다 실행되는 타이머 인터럽트에서 홀센서 측정
+        HALL_Update(&Motor1.HallDrv);
     }
 }
 /* USER CODE END 4 */

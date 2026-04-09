@@ -10,6 +10,8 @@
 #define INC_HALL_DRIVER_H_
 
 #define PI 3.1415926535897932f
+#define TWO_PI 6.2831853071795864f
+#define INV_PI 0.3183098861837907f
 #define PI_3 1.0471975511966976f
 
 #include "stm32g4xx_hal.h"
@@ -31,6 +33,8 @@ typedef struct {
     uint16_t HallCPin; // 홀 C 센서 GPIO 핀 번호
 
     TIM_HandleTypeDef *htim; // 타이머 핸들러 (각속도 계산용, 반드시 업카운트 모드)
+    float TimerPeriodSec; // 타이머 주기 (초 단위)
+
     uint32_t LastUpdateTick; // 마지막 업데이트 시간 (TIM counter 값)
     float Omega; // 각속도 (rad/s)
     float ElectricalTheta; // 전기적 각도 (Q1.31 형식)
